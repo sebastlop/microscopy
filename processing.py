@@ -41,35 +41,62 @@ def get_mesh_coordinates(max_x, max_y, dx, dy):
     X,Y = np.meshgrid(x,y)
     return X, Y
 
-def quad_fit(x, a, b, c, d):
-    return a*x**3 + b*x**2 + c*x + d
+def func_fit(x, a, b):
+    return a*x+  b
 
-def dquad_fit(x, a, b, c, d):
-    return 3*a*x**2 + 2*b*x + c
+def dfunc_fit(x, a, b):
+    return a
 
 def deriv_on_grid(data, mesh_x, mesh_y):
     # derivs in y direction
-    time_peak_pos = []
+    velocities_x = []
     for i in range(mesh_x.shape[0]):
         aux=[]
         for j in range(mesh_x.shape[1]):
             # saco la serie temporal para un x fijo y la suavizo
-            print(mesh_x[i,j])
-            denoised = gaussian_denoising(get_pixel_in_time(data, x_idx=mesh_x[i,j], y_idx=mesh_y[i,j]), kernel_size=21)
+            denoised = gaussian_denoising(get_pixel_in_time(data, x_idx=mesh_x[i,j], y_idx=mesh_y[i,j]), kernel_size=11)
             # saco los picos en el tiempo
-            peaks, props = find_peaks(denoised, distance = 10, prominence = 0.45, width=2)
+            peaks, props = find_peaks(denoised, distance = 10, prominence = 0.4, width=2)
             # elijo el primer pico temporal
             aux.append(peaks[0])
-            plt.plot(denoised+j)
-            plt.plot(peaks[0],j+1, 'rx')
-        popt,_ = curve_fit(quad_fit, aux, mesh_x[i,:])
-        plt.show()
-        plt.imshow(data[140].T)
-        plt.quiver(mesh_x[i,:], mesh_y[i,:], np.zeros_like(mesh_x[i,:]),dquad_fit(mesh_x[i,:],*popt),color = 'r')
-        plt.show()
-        time_peak_pos.append(aux)
-        
-    time_peak_pos =np.array(time_peak_pos)
+        aux = np.array(aux)
+        clean_mask = np.abs(aux - aux.mean()) < 2*aux.std()
+        aux = aux[clean_mask]
+        popt,_ = curve_fit(func_fit, aux, mesh_x[i,clean_mask])
+        velocities_x.append(popt[0])
+    velocities_x =np.array(velocities_x)
+    plt.imshow(data[120].T, origin='lower')
+    for i in range(mesh_x.shape[0]):
+        plt.quiver(mesh_x[i,:], mesh_y[i,:], velocities_x[i], 0,color = 'r')
+    plt.show()
+
+    velocities_y = []
+    for i in range(mesh_y.shape[1]):
+        aux=[]
+        for j in range(mesh_y.shape[0]):
+            denoised = gaussian_denoising(get_pixel_in_time(data, x_idx=mesh_x[j,i], y_idx=mesh_y[j,i]), kernel_size=11)
+            peaks, props = find_peaks(denoised, distance = 10, prominence = 0.4, width=2)
+            aux.append(peaks[0])
+        #     plt.plot(denoised+j)
+        #     plt.plot(peaks[0],j+1, 'rx')
+        # plt.show()
+        aux = np.array(aux)
+        clean_mask = np.abs(aux - aux.mean()) < 2*aux.std()
+        aux = aux[clean_mask]
+        popt,_ = curve_fit(func_fit, aux, mesh_y[clean_mask,i])
+        print(popt)
+        velocities_y.append(popt[0])
+    velocities_y =np.array(velocities_y)
+    plt.imshow(data[120].T, origin='lower')
+    for i in range(mesh_x.shape[1]):
+        plt.quiver(mesh_x[:,i], mesh_y[:,i], 0,velocities_y[i],color = 'r')
+    plt.show()
+
+    VX, VY = np.meshgrid(velocities_x, velocities_y)
+    plt.imshow(data[120].T, origin='lower')
+    plt.quiver(mesh_x, mesh_y, VX, VY,color = 'r')
+    plt.show()
+    
     return None
 
 if __name__ == '__main__':
