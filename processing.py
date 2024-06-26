@@ -59,6 +59,9 @@ def deriv_on_grid(data, mesh_x, mesh_y):
             peaks, props = find_peaks(denoised, distance = 10, prominence = 0.4, width=2)
             # elijo el primer pico temporal
             aux.append(peaks[0])
+            plt.plot(denoised+j)
+            plt.plot(peaks[0],j+1, 'rx')
+        plt.show()
         aux = np.array(aux)
         clean_mask = np.abs(aux - aux.mean()) < 2*aux.std()
         aux = aux[clean_mask]
@@ -67,7 +70,7 @@ def deriv_on_grid(data, mesh_x, mesh_y):
     velocities_x =np.array(velocities_x)
     plt.imshow(data[120].T, origin='lower')
     for i in range(mesh_x.shape[0]):
-        plt.quiver(mesh_x[i,:], mesh_y[i,:], velocities_x[i], 0,color = 'r')
+        plt.quiver(mesh_x[i,:], mesh_y[i,:], velocities_x[i], 0,color = 'y')
     plt.show()
 
     velocities_y = []
@@ -77,27 +80,26 @@ def deriv_on_grid(data, mesh_x, mesh_y):
             denoised = gaussian_denoising(get_pixel_in_time(data, x_idx=mesh_x[j,i], y_idx=mesh_y[j,i]), kernel_size=11)
             peaks, props = find_peaks(denoised, distance = 10, prominence = 0.4, width=2)
             aux.append(peaks[0])
-        #     plt.plot(denoised+j)
-        #     plt.plot(peaks[0],j+1, 'rx')
-        # plt.show()
+            plt.plot(denoised+j)
+            plt.plot(peaks[0],j+1, 'x')
+        plt.show()
         aux = np.array(aux)
         clean_mask = np.abs(aux - aux.mean()) < 2*aux.std()
         aux = aux[clean_mask]
         popt,_ = curve_fit(func_fit, aux, mesh_y[clean_mask,i])
-        print(popt)
         velocities_y.append(popt[0])
     velocities_y =np.array(velocities_y)
     plt.imshow(data[120].T, origin='lower')
     for i in range(mesh_x.shape[1]):
-        plt.quiver(mesh_x[:,i], mesh_y[:,i], 0,velocities_y[i],color = 'r')
+        plt.quiver(mesh_x[:,i], mesh_y[:,i], 0,velocities_y[i],color = 'y')
     plt.show()
 
     VX, VY = np.meshgrid(velocities_x, velocities_y)
     plt.imshow(data[120].T, origin='lower')
-    plt.quiver(mesh_x, mesh_y, VX, VY,color = 'r')
+    plt.quiver(mesh_x, mesh_y, VX, VY,color = 'y')
     plt.show()
     
-    return None
+    return VX, VY
 
 if __name__ == '__main__':
     raw_imgs = read_folder('./img_fase', kind='fase')
@@ -109,25 +111,5 @@ if __name__ == '__main__':
         mask = derivs[k] > 150
         derivs[k][mask] = 0
 
-    xses, yses = get_mesh_coordinates(max_x= NX, max_y= NY, dx= 50, dy= 50)
+    xses, yses = get_mesh_coordinates(max_x= NX, max_y= NY, dx= 70, dy= 70)
     deriv_on_grid(derivs, xses, yses)
-    exit()
-    for frame in range(100,140):
-        fig, axs = plt.subplots(1,2, figsize=(16,9))
-        axs[0].set_title(f'frame{frame}')
-        axs[0].imshow(derivs[frame].T)
-
-        # sobre eje
-        axs[0].scatter(xses[0,:], yses[0,:], marker='x', color='r', s=5)
-        axs[1].set_xlabel('frame number')
-        for i in range(xses.shape[1]):
-            denoised = gaussian_denoising(get_pixel_in_time(derivs, x_idx=xses[0,i], y_idx=yses[0,i]), kernel_size=21)
-
-            peaks, props = find_peaks(denoised, distance = 10, prominence = 0.5, width=2)
-            axs[1].plot(denoised+i, alpha = 0.5)
-            axs[1].vlines(peaks, i, props["prominences"]+i, ls='dotted')
-            axs[1].hlines(y=props["prominences"]+i, xmin=props["left_ips"],xmax=props["right_ips"])
-            axs[1].vlines(frame, 0, 10, color='gray', ls='dotted')
-
-
-        plt.show()
